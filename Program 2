@@ -1,0 +1,101 @@
+/*
+Student name: Jaxon Talbert
+Student NetID: JRT524
+Compiler Used: Text Editor/Ubuntu/Oracle
+Program Description: The following program produces ascii characters and numbers
+stored in a structure based off arguments passed in by the user. If no arguements
+are passed in it defaults to image.dat and 60 .
+Some code from 03filesystem example 2 by Aubrey Knight was used in this program
+*/
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <time.h>
+#define BUF_SIZE 1024
+//Creates structure for storing ascii data and the number.
+struct info
+{
+char ascii;
+int number;
+};
+int main(int argc, char *argv[])
+{
+//create local variables
+int outputFd, number, openFlags, i, value;
+mode_t filePerms;
+ssize_t numRead;
+//Used for random number generation
+srand(time(NULL));
+//Set file permissions
+openFlags = O_CREAT | O_WRONLY | O_TRUNC;
+filePerms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP| S_IROTH | S_IWOTH;
+//if user enters all three arguements
+if (argc == 3)
+{
+//Read file name to output to
+outputFd = open(argv[1], openFlags, filePerms);
+if (outputFd == -1)
+{
+perror("open for write");
+exit(EXIT_FAILURE);
+}
+//Read number of numbers to generate
+sscanf(argv[2], "%d", &number);
+//loop for generating number of numbers
+for (i = 0; i < number; i++)
+{
+//creates instance f of structure info
+struct info f;
+//for values 97-122
+f.ascii = (rand() % 26) + 97;
+//for values 5-20
+f.number = (rand() % 16) + 5;
+//write to file
+if (write(outputFd, &f, sizeof(struct info)) != sizeof(struct
+info))
+{
+perror("write");
+exit(EXIT_FAILURE);
+}
+}
+//close output
+close(outputFd);
+}
+// if only one arguement is entered
+else if (argc == 1)
+{
+//set output to image.dat and number to 60
+outputFd = open("image.dat", openFlags, filePerms);
+number = 60;
+//loop for generating number of numbers
+for (i = 0; i < number; i++)
+{
+//create instance f of struct info
+struct info f;
+//for values 97-122
+f.ascii = (rand() % 26) + 97;
+//for values 5-20
+f.number = (rand() % 16) + 5;
+//write to file
+if (write(outputFd, &f, sizeof(struct info)) != sizeof(struct
+info))
+{
+perror("write");
+exit(EXIT_FAILURE);
+}
+}
+//close output
+close(outputFd);
+}
+else
+{
+perror("Invalid amount of arguements.");
+exit(EXIT_FAILURE);
+}
+exit(EXIT_SUCCESS);
+}
