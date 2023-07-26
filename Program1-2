@@ -1,0 +1,58 @@
+/*
+Student name: Jaxon Talbert
+Student ID: JRT524
+Compiler Used: Text Editor/Oracle VM running Kali Linux 2022.4
+Program Description: The following program forks a parent and child
+process and counts to 20. 
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+	//intialize counter variables for child and paretn
+	int counter1 = 0;
+	int counter2 = 0;
+	
+	//fork
+	pid_t pid;
+	pid = fork();
+	
+	//error check if fork failed
+	if (pid == -1)
+	{
+		perror("Fork");
+		exit(EXIT_FAILURE);
+	}
+	
+	//in child process
+	if (pid == 0)
+	{
+		//while counter is less than 20
+		while (counter1 < 20)
+		{
+			//add 1 to counter
+			counter1++;
+			//printer counter and pid - should be 0 for child process
+			printf("child PID is %d counter = %d \n", pid, counter1);
+		}
+	}
+	
+	//parent process
+	else
+	{
+		//while counter is less than 20
+		while (counter2 < 20)
+		{
+			//add 1 to counter
+			counter2++;
+			//print counter and pid
+			printf("parent PID is %d counter = %d \n", pid, counter2);
+		}
+	} 
+	
+	//return 0 - no errors
+	return 0;
+}
