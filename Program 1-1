@@ -1,0 +1,22 @@
+/*
+Student name: Jaxon Talbert
+Student ID: JRT524
+Compiler Used: Text Editor/Oracle VM running Kali Linux 2022.4
+Program Description: The following program forks a parent and child
+process and counts to 20. 
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+	//create array to store commands
+	char *mycmd[4] = {"ls", "-l", "/usr", NULL}; 
+	
+	//call execvp to run commands from mycmd array
+	int id = execvp("ls", mycmd);
+	//no return or error check needed as execvp will automatically 
+	//return errors and terminate
+}
