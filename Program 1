@@ -1,47 +1,79 @@
-/******************************************************************************
-Student name:Jaxon Talbert
-Student NetID: Jrt524
-Compiler Used: GDB online
-Program Description:
-The following program asks a user to enter strings until STOP is entered and then
-reads the strings back
-in reverse order before ending the program.
-*******************************************************************************/
+//Jaxon Talbert
+//jrt524
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#include <errno.h>
 #include <string.h>
-#define BUF_SIZE 1024
+#include <fcntl.h>
+
 int main(int argc, char *argv[])
 {
-//initalize line for user input
-char line[BUF_SIZE];
-//initialize array
-char arrayString[BUF_SIZE][BUF_SIZE];
-//initialize i and j integers
-int i = 0;
-int j;
-//Notify user that STOP will end program
-printf("Enter STOP to end the program.\n");
-//while not STOP
-while(1)
-{
-//Inform user to enter string
-printf("please enter a string: \n");
-//Scan in string
-scanf("%s", line);
-//if STOP then break
-if (strncmp(line, "STOP", 4) == 0) break;
-//copy into array
-strcpy(arrayString[i], line);
-//add one to i to increment array
-i = i + 1;
-}
-printf("The strings will now be displayed in reverse. \n");
-//set i = j and decrement to read array backwards
-for (j = i; j >= 0; j--)
-{
-//print array
-printf("%s\n", arrayString[j]);
-}
-return 0;
+    char *infile;
+    int i, fd;
+    struct stat file_info;
+    struct timespec access_time, modify_time, status_time;
+    struct rusage usage;
+
+    for (i = 1; i < argc; i++)
+    {
+    	//open argv[i] as fd
+    	infile = argv[i];
+    	fd = open(infile, O_RDONLY);
+    	//if file doesnt exist continue without crashing program
+    	if (fd == -1)
+    	{
+		printf("Error opening %s\n\n", infile);
+		continue;
+	}
+    	
+    	//save fstat info to file_info
+        fstat(fd, &file_info);
+        
+        
+	//print if directory
+        if (S_ISDIR(file_info.st_mode))
+        {
+            printf("%s is a directory\n", infile);
+        }
+        
+        //print if regular file
+        else if (S_ISREG(file_info.st_mode))
+        {
+            printf("%s is a regular file\n", infile);
+        }
+	
+	//print id and links
+        printf("User ID: %d\n", file_info.st_uid);
+        printf("Group ID: %d\n", file_info.st_gid);
+        printf("Number of links: %d\n", file_info.st_nlink);
+
+	//print time info
+        access_time = file_info.st_atim;
+        printf("TIme of last access: %s", ctime(&access_time.tv_sec));
+        modify_time = file_info.st_mtim;
+        printf("Time of last modification: %s", ctime(&modify_time.tv_sec));
+        status_time = file_info.st_ctim;
+        printf("Time of last status change: %s", ctime(&status_time.tv_sec));
+
+	//print size info and nodes
+        printf("Size: %lld bytes\n", (long long) file_info.st_size);
+        printf("Inode number: %ld\n\n", (long) file_info.st_ino);
+        
+        close(fd);
+    }
+
+
+    //print final usage info
+    printf("Final Usage Stats:\n");
+    getrusage(RUSAGE_SELF, &usage);
+    printf("User CPU time used: %ld.%06ld seconds\n", usage.ru_utime.tv_sec, usage.ru_utime.tv_usec);
+    printf("System CPU time used: %ld.%06ld seconds\n", usage.ru_stime.tv_sec, usage.ru_stime.tv_usec);
+
+    return 0;
 }
