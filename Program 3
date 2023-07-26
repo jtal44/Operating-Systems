@@ -1,0 +1,100 @@
+//Jaxon Talbert
+//jrt524
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <pthread.h>
+
+#define MAX_FILES 100
+#define MAX_LINE_LEN 1000
+
+int total_lines = 0;
+//Create mutex
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void update_Total(int lines)
+{
+	//lock mutex
+	pthread_mutex_lock(&mutex);
+	//Add to total lines
+	total_lines += lines;
+	//unlock mutex
+	pthread_mutex_unlock(&mutex);
+}
+
+
+void *count_lines(void *arg)
+{
+    //Open file for reading
+    char *filename = (char *) arg;
+    FILE *fd = fopen(filename, "r");
+    
+    if (fd == NULL)
+    {
+        perror(filename);
+        pthread_exit(NULL);
+    }
+    
+    int lines = 0;
+    char line[MAX_LINE_LEN];
+    while (fgets(line, MAX_LINE_LEN, fd) != NULL)
+    {
+        lines++;
+    }
+    //close file
+    fclose(fd);
+    
+    //Print file info
+    printf("%d %s \n", lines, filename);
+    
+    //Run updates total lines function
+    update_Total(lines);
+    
+    //Exit
+    pthread_exit(NULL);
+}
+
+int main(int argc, char *argv[])
+{
+    //If no files are given:
+    if (argc < 2)
+    {
+        printf("Please enter file names. \n");
+        exit(1);
+    }
+    
+    pthread_t threads[MAX_FILES];
+    int count;
+    for (int i = 1; i < argc; i++)
+    {
+    	//create threads
+        count = pthread_create(&threads[i-1], NULL, count_lines, (void *) argv[i]);
+        if (count)
+        {   
+            perror("pthread_create()");
+	    exit(1);
+        }
+    }
+    
+    for (int i = 1; i < argc; i++)
+    {
+    	//join threads
+        count = pthread_join(threads[i-1], NULL);
+        if (count)
+        {
+            perror("pthread_join()");
+	    exit(1);
+        }
+    }
+    
+    //Print total count
+    printf("total %d \n", total_lines);
+    //Destroy mutex
+    pthread_mutex_destroy(&mutex);
+    //Exit
+    exit(0);
+}
