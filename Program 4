@@ -1,0 +1,79 @@
+//Jaxon Talbert
+//jrt524
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <fcntl.h>
+
+int main(int argc, char *argv[])
+{
+    char *infile;
+    int i, fd;
+    struct stat file_info;
+    struct timespec access_time, modify_time, status_time;
+    struct rusage usage;
+
+    for (i = 1; i < argc; i++)
+    {
+    	//open argv[i] as fd
+    	infile = argv[i];
+    	fd = open(infile, O_RDONLY);
+    	//if file doesnt exist continue without crashing program
+    	if (fd == -1)
+    	{
+		printf("Error opening %s\n\n", infile);
+		continue;
+	}
+    	
+    	//save fstat info to file_info
+        fstat(fd, &file_info);
+        
+        
+	//print if directory
+        if (S_ISDIR(file_info.st_mode))
+        {
+            printf("%s is a directory\n", infile);
+        }
+        
+        //print if regular file
+        else if (S_ISREG(file_info.st_mode))
+        {
+            printf("%s is a regular file\n", infile);
+        }
+	
+	//print id and links
+        printf("User ID: %d\n", file_info.st_uid);
+        printf("Group ID: %d\n", file_info.st_gid);
+        printf("Number of links: %d\n", file_info.st_nlink);
+
+	//print time info
+        access_time = file_info.st_atim;
+        printf("TIme of last access: %s", ctime(&access_time.tv_sec));
+        modify_time = file_info.st_mtim;
+        printf("Time of last modification: %s", ctime(&modify_time.tv_sec));
+        status_time = file_info.st_ctim;
+        printf("Time of last status change: %s", ctime(&status_time.tv_sec));
+
+	//print size info and nodes
+        printf("Size: %lld bytes\n", (long long) file_info.st_size);
+        printf("Inode number: %ld\n\n", (long) file_info.st_ino);
+        
+        close(fd);
+    }
+
+
+    //print final usage info
+    printf("Final Usage Stats:\n");
+    getrusage(RUSAGE_SELF, &usage);
+    printf("User CPU time used: %ld.%06ld seconds\n", usage.ru_utime.tv_sec, usage.ru_utime.tv_usec);
+    printf("System CPU time used: %ld.%06ld seconds\n", usage.ru_stime.tv_sec, usage.ru_stime.tv_usec);
+
+    return 0;
+}
