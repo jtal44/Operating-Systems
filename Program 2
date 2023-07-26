@@ -1,0 +1,276 @@
+//Jaxon Talbert
+//jrt524
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h> 
+#include <unistd.h> 
+#include <libgen.h> 
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <signal.h>
+
+int x = 0;
+int c = 0;
+char** history;
+char* cmd[257];
+char line[257];
+int filein;
+int fileout;
+int in;
+int out;
+int openFlags = O_CREAT | O_WRONLY | O_TRUNC;
+char *prompt="jrt524_shell> ";
+
+extern char** environ;
+
+void signalHandler(int sig)
+{
+	if (sig == SIGUSR1)
+	{
+		//printf("x = %d \n", x); used in testing
+		
+		FILE* fd;
+		//open audit.log
+		fd = fopen("audit.log", "w");
+			
+		int z = 0;
+		int d;
+		d = x;
+		//if history array has less than 10 commands stored in it 
+		if (d < 10)
+		{
+			//while x isnt 0
+			while ( d != 0)
+			{
+				//save current cmd to audit.log
+				fputs(history[d-1], fd);
+				//decrement x
+				d--;
+			}
+		}
+		
+		else
+		{
+			//while z does not = 10 in order to print only last 10 commands
+			while (z != 10 && history[d-1] != NULL)
+			{
+				//save current cmd to audit.log
+				fputs(history[d-1], fd);
+				//decrement x
+				d--;
+				//increment z
+				z++;
+			}
+		}		
+		
+		//close audit.log
+		fclose(fd);
+		exit(0);
+	}	
+}
+
+
+
+int main()
+{
+	int i, and;
+	char* pch;
+	pid_t pid;
+	struct sigaction sa;
+	sa.sa_handler = signalHandler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	
+	if (sigaction(SIGUSR1, &sa, NULL) == -1)
+	{
+		perror("sigaction");
+		exit(1);
+	}
+	
+	printf("Parent PID: %d \n", getpid());
+
+	
+	fprintf(stderr,"%s",prompt);
+	
+	history = (char **) malloc(20 * sizeof(char *));
+	//save user input to line 
+	while (fgets(line, 256, stdin) != NULL)
+	{
+		
+		history[x] = (char *) malloc(10 * sizeof(char));
+		strcpy(history[x], line);
+		//printf("%s is history \n", history[x]); used in testing
+		
+		//increment x
+		x++;
+		
+		i = 0;
+		pch = cmd[0];
+		while (pch != NULL)
+		{
+			//pch = strtok (NULL, " \t\n"); used in testing
+			cmd[i] = NULL;
+			i++;
+			pch = cmd[i];
+			//printf("Test execution \n"); used in testing
+		}
+		
+		
+		char delim[] = " \t\n";
+		i = 0;
+		and = 0;
+		in = 0; 
+		out = 0;
+		//tokenize
+		pch = strtok(line, delim);
+		while (pch != NULL)
+		{
+			//detect <
+			if (strcmp(pch, "<") == 0)
+			{
+				in = 1;
+				pch = strtok(NULL, delim);
+				filein = open(pch, O_RDONLY);
+				//printf("in detected. \n"); used in testing
+			}
+			
+			//detect >
+			else if (strcmp(pch, ">") == 0)
+			{
+				out = 1;
+				pch = strtok(NULL, delim);
+				fileout = open(pch, openFlags, 0644);
+				//printf("out detected. \n"); used in testing
+			}
+			
+			//detect and
+			else if (strcmp(pch, "&") == 0)
+			{
+				and = 1;
+				//printf("And detected. \n"); used in testing
+			}
+						
+			else
+			{
+				cmd[i] = pch;
+				i++;
+			}
+			//tokenize
+			pch = strtok(NULL, delim);
+			//printf("Test execution 2 \n"); used in testing				
+		}
+		switch (pid = fork())
+		{
+			//error check fork
+			case -1:
+				perror("fork");
+				exit(1);
+				
+			case 0:
+				//if in was detected above
+				if (in == 1)
+				{
+					dup2(filein, 0);
+					close(filein);
+				}
+				
+				//if out was detected
+				if (out == 1)
+				{
+					dup2(fileout, 1);
+					close(fileout);
+				}
+				
+				//if cd was entered as cmd[0]
+				if (strcmp(cmd[0], "cd") == 0)
+				{	
+					//used to step out of current folder ie just cd
+					if (cmd[1] == NULL)
+					{
+						if (chdir("..") == -1)
+						{
+							perror("chdir failed");
+							exit(1);
+						}
+					}
+					
+						
+					//runchdir with cmd[1] ie cd "folder_name"
+					else 
+					{
+						if (chdir(cmd[1]) == -1)
+						{
+							perror("chdir failed");
+							exit(1);
+						}
+					}
+				}
+					
+				// if history was entered
+				else if (strcmp(cmd[0], "history") == 0)
+				{	
+					//copy value of x	
+					int h;
+					h = x;
+					//print less than 10 if history isnt large
+					if (h < 10)
+					{
+						//loop until h = 0 and print
+						while ((h - 1) != -1)
+						{
+							printf("%s \n", history[h-1]);
+							h--;
+						}
+					}
+						
+					//if history is 10 or larger	
+					else if (h > 10)
+					{
+						//loop 10 times and print 
+						for (int l = 10; l != 0; l--)
+						{
+							printf("%s \n", history[h-1]);
+							h--;
+						}
+					}				
+				}
+			
+				//if env was entered
+				else if (strcmp(cmd[0], "env") == 0)
+				{
+					int o = 0;
+					//print environ info
+					while (environ[o] != NULL)
+					{
+						printf("%s \n", environ[o]);
+						o++;
+					}
+					
+				}
+				
+				//execvp any other command	
+				else
+				{			
+					execvp(cmd[0], cmd);
+				}
+						
+				
+			default:
+				//if no and, wait in parent
+				if (and == 0)
+				{
+					wait(NULL);
+				}
+		}
+	//print prompt	
+	fprintf(stderr,"%s",prompt);
+		
+	}
+	exit(0);
+}
